@@ -128,6 +128,34 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
     draw_footer(canvas, "<Prev", "Next>");
 }
 
+static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const char* text, uint32_t phase_seed) {
+    if(!text || !text[0]) return;
+
+    uint16_t text_w = canvas_string_width(canvas, text);
+    if(text_w <= (uint16_t)w) {
+        canvas_frame_set(canvas, x, y, w, h);
+        canvas_draw_str(canvas, 0, 9, text);
+        canvas_frame_set(canvas, 0, 0, 128, 64);
+        return;
+    }
+
+    uint32_t t = furi_get_tick() + phase_seed;
+    uint32_t step = t / 120;
+    uint16_t gap = 14;
+    uint16_t cycle = text_w + gap;
+    uint16_t off = (uint16_t)(step % cycle);
+
+    canvas_frame_set(canvas, x, y, w, h);
+
+    int32_t x1 = -(int32_t)off;
+    int32_t x2 = x1 + (int32_t)cycle;
+
+    canvas_draw_str(canvas, x1, 9, text);
+    canvas_draw_str(canvas, x2, 9, text);
+
+    canvas_frame_set(canvas, 0, 0, 128, 64);
+}
+
 static void render_stats(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Statistics");
 
