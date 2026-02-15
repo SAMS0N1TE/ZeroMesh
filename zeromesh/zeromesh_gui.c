@@ -43,28 +43,32 @@ static void draw_footer(Canvas* canvas, const char* left_hint, const char* right
     }
 }
 
-static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const char* text, bool is_tx) {
+static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const char* text, bool is_tx, uint32_t phase_seed) {
     canvas_set_font(canvas, FontSecondary);
 
-    int text_w = canvas_string_width(canvas, text);
-    if(text_w > max_w - 8) text_w = max_w - 8;
-
-    int bubble_w = text_w + 8;
     int bubble_h = 12;
+    int pad = 4;
+
+    int text_w = canvas_string_width(canvas, text);
+    int inner_w = max_w - (pad * 2);
+    int bubble_w = text_w + (pad * 2);
+    if(bubble_w > max_w) bubble_w = max_w;
+    if(bubble_w < 20) bubble_w = 20;
+
+    int bx = is_tx ? (x + max_w - bubble_w) : x;
 
     if(is_tx) {
-        int bx = x + max_w - bubble_w;
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorWhite);
-        canvas_draw_str(canvas, bx + 4, y + 9, text);
+        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text, phase_seed);
         canvas_set_color(canvas, ColorBlack);
     } else {
         canvas_set_color(canvas, ColorWhite);
-        canvas_draw_rbox(canvas, x, y, bubble_w, bubble_h, 3);
+        canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorBlack);
-        canvas_draw_rframe(canvas, x, y, bubble_w, bubble_h, 3);
-        canvas_draw_str(canvas, x + 4, y + 9, text);
+        canvas_draw_rframe(canvas, bx, y, bubble_w, bubble_h, 3);
+        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text, phase_seed);
     }
 }
 
