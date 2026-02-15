@@ -10,8 +10,6 @@
 #include "zeromesh_history.h"
 #include "zeromesh_roster.h"
 
-extern const char* ringtone_names[];
-
 static const uint32_t baud_options[] = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
 #define BAUD_OPTIONS_COUNT (sizeof(baud_options) / sizeof(baud_options[0]))
 
@@ -34,14 +32,69 @@ static void draw_footer(Canvas* canvas, const char* left_hint, const char* right
     }
 }
 
-static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const char* text, uint32_t phase_seed) {
-    if(!text || !text[0]) return;
+static void draw_str_ellipsis(Canvas* canvas, int x, int y, int max_w, const char* s) {
+    if(!s) s = "";
+    if(max_w <= 0) return;
+
+    if(canvas_string_width(canvas, s) <= max_w) {
+        canvas_draw_str(canvas, x, y, s);
+        return;
+    }
+
+    char buf[64];
+    size_t n = strlen(s);
+    if(n >= sizeof(buf)) n = sizeof(buf) - 1;
+    memcpy(buf, s, n);
+    buf[n] = '\0';
+
+    while(n > 0) {
+        size_t keep = n;
+        if(keep > sizeof(buf) - 4) keep = sizeof(buf) - 4;
+
+        char tmp[64];
+        memcpy(tmp, buf, keep);
+        tmp[keep] = '.';
+        tmp[keep + 1] = '.';
+        tmp[keep + 2] = '.';
+        tmp[keep + 3] = '\0';
+
+        if(canvas_string_width(canvas, tmp) <= max_w) {
+            canvas_draw_str(canvas, x, y, tmp);
+            return;
+        }
+        n--;
+    }
+
+    canvas_draw_str(canvas, x, y, "...");
+}
+
+static void draw_marquee_text_masked(
+    Canvas* canvas,
+    int bx,
+    int by,
+    int bubble_w,
+    int bubble_h,
+    int pad,
+    const char* text,
+    uint32_t phase_seed,
+    bool is_tx) {
+    if(!text) text = "";
+
+    Color bubble_bg = is_tx ? ColorBlack : ColorWhite;
+    Color text_col = is_tx ? ColorWhite : ColorBlack;
+
+    int inner_x = bx + pad;
+    int inner_y = by + 1;
+    int inner_w = bubble_w - (pad * 2);
+    int baseline = inner_y + 9;
+
+    if(inner_w <= 0) return;
 
     uint16_t text_w = canvas_string_width(canvas, text);
-    if(text_w <= (uint16_t)w) {
-        canvas_frame_set(canvas, x, y, w, h);
-        canvas_draw_str(canvas, 0, 9, text);
-        canvas_frame_set(canvas, 0, 0, 128, 64);
+    if(text_w <= (uint16_t)inner_w) {
+        canvas_set_color(canvas, text_col);
+        canvas_draw_str(canvas, inner_x, baseline, text);
+        canvas_set_color(canvas, ColorBlack);
         return;
     }
 
@@ -51,15 +104,29 @@ static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const 
     uint16_t cycle = text_w + gap;
     uint16_t off = (uint16_t)(step % cycle);
 
-    canvas_frame_set(canvas, x, y, w, h);
-
-    int32_t x1 = -(int32_t)off;
+    int32_t x1 = (int32_t)inner_x - (int32_t)off;
     int32_t x2 = x1 + (int32_t)cycle;
 
-    canvas_draw_str(canvas, x1, 9, text);
-    canvas_draw_str(canvas, x2, 9, text);
+    canvas_set_color(canvas, text_col);
+    canvas_draw_str(canvas, (int)x1, baseline, text);
+    canvas_draw_str(canvas, (int)x2, baseline, text);
 
-    canvas_frame_set(canvas, 0, 0, 128, 64);
+    canvas_set_color(canvas, bubble_bg);
+    if(pad > 0) {
+        canvas_draw_box(canvas, bx, by, pad, bubble_h);
+        canvas_draw_box(canvas, bx + bubble_w - pad, by, pad, bubble_h);
+    }
+
+    canvas_set_color(canvas, ColorWhite);
+    if(bx > 0) {
+        canvas_draw_box(canvas, 0, by, bx, bubble_h);
+    }
+    int rx = bx + bubble_w;
+    if(rx < 128) {
+        canvas_draw_box(canvas, rx, by, 128 - rx, bubble_h);
+    }
+
+    canvas_set_color(canvas, ColorBlack);
 }
 
 void draw_header(Canvas* canvas, ZeroMeshApp* app, const char* title) {
@@ -70,9 +137,9 @@ void draw_header(Canvas* canvas, ZeroMeshApp* app, const char* title) {
     canvas_set_font(canvas, FontPrimary);
 
     int dot_x = 76;
-    canvas_frame_set(canvas, 4, 1, dot_x - 8, 12);
-    canvas_draw_str(canvas, 0, 10, title ? title : "");
-    canvas_frame_set(canvas, 0, 0, 128, 64);
+    int title_x = 4;
+    int title_max = (dot_x - 6) - title_x;
+    draw_str_ellipsis(canvas, title_x, 11, title_max, title);
 
     if(app->serial && app->rx_bytes > 0) {
         canvas_draw_disc(canvas, 120, 7, 3);
@@ -97,7 +164,8 @@ static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const c
     int bubble_h = 12;
     int pad = 4;
 
-    int text_w = canvas_string_width(canvas, text ? text : "");
+    const char* s = text ? text : "";
+    int text_w = canvas_string_width(canvas, s);
     int bubble_w = text_w + (pad * 2);
     if(bubble_w > max_w) bubble_w = max_w;
     if(bubble_w < 20) bubble_w = 20;
@@ -107,15 +175,14 @@ static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const c
     if(is_tx) {
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
-        canvas_set_color(canvas, ColorWhite);
-        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text ? text : "", phase_seed);
+        draw_marquee_text_masked(canvas, bx, y, bubble_w, bubble_h, pad, s, phase_seed, true);
         canvas_set_color(canvas, ColorBlack);
     } else {
         canvas_set_color(canvas, ColorWhite);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rframe(canvas, bx, y, bubble_w, bubble_h, 3);
-        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text ? text : "", phase_seed);
+        draw_marquee_text_masked(canvas, bx, y, bubble_w, bubble_h, pad, s, phase_seed, false);
     }
 }
 
@@ -339,12 +406,6 @@ static void render_settings(Canvas* canvas, ZeroMeshApp* app) {
         }
 
         canvas_set_color(canvas, ColorBlack);
-    }
-
-    if(app->settings_editing) {
-        draw_footer(canvas, "Left/Right: Value", "OK: Done");
-    } else {
-        draw_footer(canvas, "Up/Down: Select", "OK: Edit");
     }
 }
 
