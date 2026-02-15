@@ -163,7 +163,22 @@ Settings automatically save when changed.
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+## Credits / Upstream
 
-## Credits
+This project interoperates with and/or uses components from:
 
-Developed for the Flipper Zero community. Uses Meshtastic protocol buffers and nanopb for serialization.
+- Meshtastic
+  - Upstream: https://github.com/meshtastic/firmware
+  - License: GPL-3.0
+  - Used for: Meshtastic serial protocol + protobuf schema compatibility
+
+- Flipper Zero Firmware (Flipper Devices)
+  - Upstream: https://github.com/flipperdevices/flipperzero-firmware
+  - License: GPL-3.0
+  - Used for: Flipper Zero SDK / application build environment
+
+- Nanopb (Protocol Buffers for embedded C)
+  - Upstream: https://github.com/nanopb/nanopb
+  - License: zlib
+  - Used for: protobuf encoding/decoding
+
