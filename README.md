@@ -93,7 +93,6 @@ The Meshtastic node must be configured via the CLI or Mobile App:
 * **Serial Module**: Enabled.
 * **Serial Mode**: `PROTO`.
 * **Baud Rate**: 115200.
-* **Serial Echo**: True (recommended).
 
 ## Usage
 
