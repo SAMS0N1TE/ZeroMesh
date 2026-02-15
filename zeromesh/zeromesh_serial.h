@@ -39,6 +39,11 @@
 
 #define ROSTER_MAX_NODES 16
 
+#define SETTINGS_PATH "/ext/zeromesh/settings.cfg"
+#define MAX_CHANNELS 8
+
+#define MAX_RINGTONE_PATH 128
+
 typedef enum {
     RosterStateList = 0,
     RosterStateChat,
@@ -86,8 +91,26 @@ typedef enum {
     RingtoneLong,
     RingtoneSOS,
     RingtoneChirp,
+    RingtoneNokia,
+    RingtoneDescend,
+    RingtoneBounce,
+    RingtoneAlert,
+    RingtonePulse,
+    RingtoneSiren,
+    RingtoneBeep3,
+    RingtoneTrill,
+    RingtoneMario,
+    RingtoneLevelUp,
+    RingtoneMetric,
+    RingtoneMinimalist,
     RINGTONE_COUNT
 } RingtoneType;
+
+typedef enum {
+    LMH_Scroll = 0,
+    LMH_Wrap,
+    LMH_COUNT
+} LongMessageHandling;
 
 typedef enum {
     SettingUart = 0,
@@ -95,6 +118,9 @@ typedef enum {
     SettingVibro,
     SettingLed,
     SettingRingtone,
+    SettingScrollSpeed,
+    SettingScrollFramerate,
+    SettingLMH,
     SETTING_COUNT
 } SettingItem;
 
@@ -160,6 +186,13 @@ typedef struct {
     bool notify_vibro;
     bool notify_led;
     RingtoneType notify_ringtone;
+    
+    uint8_t scroll_speed;
+    uint8_t scroll_framerate;
+    LongMessageHandling lmh_mode;
+    
+    uint8_t current_channel;
+    uint8_t num_channels;
     
     volatile bool notify_active;
     uint32_t notify_start_tick;

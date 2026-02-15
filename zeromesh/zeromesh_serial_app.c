@@ -2,6 +2,8 @@
 #include "zeromesh_gui.h"
 #include "zeromesh_uart.h"
 #include "zeromesh_protocol.h"
+#include "zeromesh_settings.h"
+#include "zeromesh_channel.h"
 
 #include <furi.h>
 #include <gui/gui.h>
@@ -29,6 +31,14 @@ int32_t zeromesh_serial_app(void* p) {
     app->notify_vibro = true;
     app->notify_led = true;
     app->notify_ringtone = RingtoneShort;
+    
+    app->scroll_speed = 5;
+    app->scroll_framerate = 5;
+    app->lmh_mode = LMH_Scroll;
+    
+    channel_init(app);
+    
+    settings_load(app);
 
     snprintf(app->status, sizeof(app->status), "Connecting...");
 
@@ -52,6 +62,12 @@ int32_t zeromesh_serial_app(void* p) {
 
     furi_delay_ms(500);
     request_info(app);
+
+    uint32_t last_render = furi_get_tick();
+    const uint32_t frame_delays[] = {
+        1000, 500, 333, 250, 200,
+        166, 142, 125, 111, 100
+    };
 
     while(!app->stop_thread) {
         if(app->show_keyboard) {
@@ -83,14 +99,23 @@ int32_t zeromesh_serial_app(void* p) {
 
             app->show_keyboard = false;
             gui_add_view_port(app->gui, app->vp, GuiLayerFullscreen);
+            last_render = furi_get_tick();
         } else {
-            view_port_update(app->vp);
+            uint32_t now = furi_get_tick();
+            uint32_t frame_delay = frame_delays[app->scroll_framerate - 1];
+            
+            if(now - last_render >= frame_delay) {
+                view_port_update(app->vp);
+                last_render = now;
+            } else {
+                furi_delay_ms(10);
+            }
         }
-
-        furi_delay_ms(50);
     }
 
     app->stop_thread = true;
+    
+    settings_save(app);
 
     furi_thread_join(app->rx_thread);
     furi_thread_free(app->rx_thread);
