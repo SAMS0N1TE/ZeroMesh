@@ -42,42 +42,29 @@ int32_t zeromesh_serial_app(void* p) {
     furi_delay_ms(500);
     request_info(app);
 
-    while(!app->stop_thread) {
+        while(!app->stop_thread) {
         if(app->show_keyboard) {
             gui_remove_view_port(app->gui, app->vp);
-            
             app->kb_dispatcher = view_dispatcher_alloc();
             app->text_input = text_input_alloc();
-            
             text_input_set_header_text(app->text_input, "Send Message:");
-            text_input_set_result_callback(
-                app->text_input, 
-                text_input_callback, 
-                app, 
-                app->text_buffer, 
-                sizeof(app->text_buffer), 
-                false
-            );
-            
+            text_input_set_result_callback(app->text_input, text_input_callback, app, app->text_buffer, sizeof(app->text_buffer), false);
             view_dispatcher_add_view(app->kb_dispatcher, 0, text_input_get_view(app->text_input));
             view_set_previous_callback(text_input_get_view(app->text_input), kb_back_callback);
-
             view_dispatcher_attach_to_gui(app->kb_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
             view_dispatcher_switch_to_view(app->kb_dispatcher, 0);
-            
             view_dispatcher_run(app->kb_dispatcher);
-            
             view_dispatcher_remove_view(app->kb_dispatcher, 0);
             text_input_free(app->text_input);
             view_dispatcher_free(app->kb_dispatcher);
-            
             app->show_keyboard = false;
             gui_add_view_port(app->gui, app->vp, GuiLayerFullscreen);
+        } else {
             view_port_update(app->vp);
         }
         furi_delay_ms(50);
     }
-
+    
     app->stop_thread = true;
     furi_thread_join(app->rx_thread);
     furi_thread_free(app->rx_thread);
