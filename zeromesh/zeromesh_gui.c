@@ -1,17 +1,78 @@
 #include "zeromesh_gui.h"
-#include <gui/elements.h>
+#include <furi.h>
+#include <gui/canvas.h>
+#include <gui/view_dispatcher.h>
+#include <gui/modules/text_input.h>
+
 #include "zeromesh_notify.h"
 #include "zeromesh_uart.h"
 #include "zeromesh_protocol.h"
 #include "zeromesh_history.h"
 #include "zeromesh_roster.h"
 
+extern const char* ringtone_names[];
+
+static const uint32_t baud_options[] = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+#define BAUD_OPTIONS_COUNT (sizeof(baud_options) / sizeof(baud_options[0]))
+
+static uint8_t baud_to_index(uint32_t baud) {
+    for(uint8_t i = 0; i < BAUD_OPTIONS_COUNT; i++) {
+        if(baud_options[i] == baud) return i;
+    }
+    return 4;
+}
+
+static void draw_footer(Canvas* canvas, const char* left_hint, const char* right_hint) {
+    canvas_set_font(canvas, FontSecondary);
+    canvas_set_color(canvas, ColorBlack);
+    if(left_hint && left_hint[0]) {
+        canvas_draw_str(canvas, 2, 64, left_hint);
+    }
+    if(right_hint && right_hint[0]) {
+        int w = canvas_string_width(canvas, right_hint);
+        canvas_draw_str(canvas, 126 - w, 64, right_hint);
+    }
+}
+
+static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const char* text, uint32_t phase_seed) {
+    if(!text || !text[0]) return;
+
+    uint16_t text_w = canvas_string_width(canvas, text);
+    if(text_w <= (uint16_t)w) {
+        canvas_frame_set(canvas, x, y, w, h);
+        canvas_draw_str(canvas, 0, 9, text);
+        canvas_frame_set(canvas, 0, 0, 128, 64);
+        return;
+    }
+
+    uint32_t t = furi_get_tick() + phase_seed;
+    uint32_t step = t / 120;
+    uint16_t gap = 14;
+    uint16_t cycle = text_w + gap;
+    uint16_t off = (uint16_t)(step % cycle);
+
+    canvas_frame_set(canvas, x, y, w, h);
+
+    int32_t x1 = -(int32_t)off;
+    int32_t x2 = x1 + (int32_t)cycle;
+
+    canvas_draw_str(canvas, x1, 9, text);
+    canvas_draw_str(canvas, x2, 9, text);
+
+    canvas_frame_set(canvas, 0, 0, 128, 64);
+}
+
 void draw_header(Canvas* canvas, ZeroMeshApp* app, const char* title) {
     canvas_set_color(canvas, ColorBlack);
     canvas_draw_box(canvas, 0, 0, 128, 14);
+
     canvas_set_color(canvas, ColorWhite);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 4, 11, title);
+
+    int dot_x = 76;
+    canvas_frame_set(canvas, 4, 1, dot_x - 8, 12);
+    canvas_draw_str(canvas, 0, 10, title ? title : "");
+    canvas_frame_set(canvas, 0, 0, 128, 64);
 
     if(app->serial && app->rx_bytes > 0) {
         canvas_draw_disc(canvas, 120, 7, 3);
@@ -19,7 +80,6 @@ void draw_header(Canvas* canvas, ZeroMeshApp* app, const char* title) {
         canvas_draw_circle(canvas, 120, 7, 3);
     }
 
-    int dot_x = 76;
     for(int i = 0; i < PAGE_COUNT; i++) {
         if(i == (int)app->ui_mode) {
             canvas_draw_disc(canvas, dot_x + i * 7, 7, 2);
@@ -31,56 +91,44 @@ void draw_header(Canvas* canvas, ZeroMeshApp* app, const char* title) {
     canvas_set_color(canvas, ColorBlack);
 }
 
-static void draw_footer(Canvas* canvas, const char* left_hint, const char* right_hint) {
-    canvas_set_font(canvas, FontSecondary);
-    canvas_set_color(canvas, ColorBlack);
-    if(left_hint) {
-        canvas_draw_str(canvas, 2, 64, left_hint);
-    }
-    if(right_hint) {
-        int w = canvas_string_width(canvas, right_hint);
-        canvas_draw_str(canvas, 126 - w, 64, right_hint);
-    }
-}
-
-static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const char* text, bool is_tx) {
+static void draw_message_bubble(Canvas* canvas, int x, int y, int max_w, const char* text, bool is_tx, uint32_t phase_seed) {
     canvas_set_font(canvas, FontSecondary);
 
-    int text_w = canvas_string_width(canvas, text);
-    if(text_w > max_w - 8) text_w = max_w - 8;
-
-    int bubble_w = text_w + 8;
     int bubble_h = 12;
+    int pad = 4;
+
+    int text_w = canvas_string_width(canvas, text ? text : "");
+    int bubble_w = text_w + (pad * 2);
+    if(bubble_w > max_w) bubble_w = max_w;
+    if(bubble_w < 20) bubble_w = 20;
+
+    int bx = is_tx ? (x + max_w - bubble_w) : x;
 
     if(is_tx) {
-        int bx = x + max_w - bubble_w;
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorWhite);
-        canvas_draw_str(canvas, bx + 4, y + 9, text);
+        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text ? text : "", phase_seed);
         canvas_set_color(canvas, ColorBlack);
     } else {
         canvas_set_color(canvas, ColorWhite);
-        canvas_draw_rbox(canvas, x, y, bubble_w, bubble_h, 3);
+        canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorBlack);
-        canvas_draw_rframe(canvas, x, y, bubble_w, bubble_h, 3);
-        canvas_draw_str(canvas, x + 4, y + 9, text);
+        canvas_draw_rframe(canvas, bx, y, bubble_w, bubble_h, 3);
+        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, text ? text : "", phase_seed);
     }
 }
 
 static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Messages");
-
     canvas_set_font(canvas, FontSecondary);
     canvas_set_color(canvas, ColorBlack);
 
-    // 1. Create a temporary map of broadcast messages to maintain scroll logic
     uint8_t broadcast_indices[MSG_HISTORY];
     uint8_t broadcast_count = 0;
 
     for(uint8_t i = 0; i < app->history.count; i++) {
         uint8_t idx = (app->history.head + MSG_HISTORY - app->history.count + i) % MSG_HISTORY;
-        // Only include broadcast messages (to == 0xFFFFFFFF)
         if(app->history.msgs[idx].to == 0xFFFFFFFF) {
             broadcast_indices[broadcast_count++] = idx;
         }
@@ -89,12 +137,12 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
     if(broadcast_count == 0) {
         canvas_draw_str(canvas, 16, 34, "No mesh traffic yet");
         canvas_draw_str(canvas, 10, 46, "Press OK to broadcast");
-        draw_footer(canvas, "<Prev", "Next>");
+        draw_footer(canvas, "", "");
         return;
     }
 
-    // 2. Adjust scroll logic based on the filtered count
     int max_visible = 3;
+
     if(broadcast_count <= (uint8_t)max_visible) {
         app->msg_scroll_offset = 0;
     } else if(app->msg_scroll_offset > broadcast_count - max_visible) {
@@ -103,21 +151,17 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
 
     uint8_t start_offset = 0;
     if(broadcast_count > (uint8_t)max_visible) {
-        // We use the filtered count for the offset
         start_offset = broadcast_count - max_visible - app->msg_scroll_offset;
     }
 
-    // 3. Render the filtered bubbles
     int y = 18;
     for(int i = 0; i < max_visible && (start_offset + i) < broadcast_count; i++) {
         uint8_t history_idx = broadcast_indices[start_offset + i];
         Message* msg = &app->history.msgs[history_idx];
-        
-        draw_message_bubble(canvas, 2, y, 124, msg->text, msg->is_tx);
+        draw_message_bubble(canvas, 2, y, 124, msg->text, msg->is_tx, (uint32_t)history_idx * 977u);
         y += 14;
     }
 
-    // 4. Scroll Indicators
     if(app->msg_scroll_offset > 0) {
         canvas_draw_str(canvas, 60, 62, "v");
     }
@@ -125,38 +169,43 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
         canvas_draw_str(canvas, 60, 17, "^");
     }
 
-    draw_footer(canvas, "<Prev", "Next>");
+    draw_footer(canvas, "", "");
 }
 
 static void render_stats(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Statistics");
-
     canvas_set_font(canvas, FontSecondary);
-    char buf[64];
 
-    snprintf(buf, sizeof(buf), "Port: %s @ %lu",
-             (app->uart_id == FuriHalSerialIdUsart) ? "USART" : "LPUART",
-             (unsigned long)app->baud);
+    char buf[64];
+    snprintf(
+        buf,
+        sizeof(buf),
+        "Port: %s @ %lu",
+        (app->uart_id == FuriHalSerialIdUsart) ? "USART" : "LPUART",
+        (unsigned long)app->baud);
     canvas_draw_str(canvas, 2, 24, buf);
 
     snprintf(buf, sizeof(buf), "RX: %lu bytes", (unsigned long)app->rx_bytes);
     canvas_draw_str(canvas, 2, 34, buf);
 
-    snprintf(buf, sizeof(buf), "Frames: %lu OK / %lu bad",
-             (unsigned long)app->rx_frames_ok,
-             (unsigned long)(app->rx_bad_magic + app->rx_bad_len + app->rx_decode_fail));
+    snprintf(
+        buf,
+        sizeof(buf),
+        "Frames: %lu OK / %lu bad",
+        (unsigned long)app->rx_frames_ok,
+        (unsigned long)(app->rx_bad_magic + app->rx_bad_len + app->rx_decode_fail));
     canvas_draw_str(canvas, 2, 44, buf);
 
     snprintf(buf, sizeof(buf), "TX: %lu frames", (unsigned long)app->tx_frames);
     canvas_draw_str(canvas, 2, 54, buf);
 
-    draw_footer(canvas, "<Prev", "Next>");
+    draw_footer(canvas, "", "");
 }
 
 static void render_signal(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Signal Info");
-
     canvas_set_font(canvas, FontSecondary);
+
     char buf[64];
 
     if(app->my_node_num != 0) {
@@ -180,12 +229,11 @@ static void render_signal(Canvas* canvas, ZeroMeshApp* app) {
         canvas_draw_str(canvas, 2, 34, "No messages yet");
     }
 
-    draw_footer(canvas, "<Prev", "Next>");
+    draw_footer(canvas, "", "");
 }
 
 static void render_logs(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Debug Logs");
-
     canvas_set_font(canvas, FontSecondary);
 
     if(app->rx_bytes == 0) {
@@ -193,7 +241,7 @@ static void render_logs(Canvas* canvas, ZeroMeshApp* app) {
         canvas_draw_str(canvas, 2, 36, "Check:");
         canvas_draw_str(canvas, 2, 46, "- Serial mode PROTO");
         canvas_draw_str(canvas, 2, 56, "- Serial echo true");
-        draw_footer(canvas, "<Prev", "Next>");
+        draw_footer(canvas, "", "");
         return;
     }
 
@@ -202,10 +250,9 @@ static void render_logs(Canvas* canvas, ZeroMeshApp* app) {
     }
 
     int visible_lines = 5;
-
-    uint8_t start_idx = app->log_paused ?
-        (app->line_head + LOG_LINES - app->log_scroll_offset - visible_lines) % LOG_LINES :
-        (app->line_head + LOG_LINES - visible_lines) % LOG_LINES;
+    uint8_t start_idx = app->log_paused
+                            ? (app->line_head + LOG_LINES - app->log_scroll_offset - visible_lines) % LOG_LINES
+                            : (app->line_head + LOG_LINES - visible_lines) % LOG_LINES;
 
     int y = 24;
     for(int i = 0; i < visible_lines; i++) {
@@ -217,38 +264,27 @@ static void render_logs(Canvas* canvas, ZeroMeshApp* app) {
         y += 8;
     }
 
-    draw_footer(canvas, "<Prev", "OK:Pause");
-}
-
-static const uint32_t baud_options[] = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
-#define BAUD_OPTIONS_COUNT 8
-
-static uint8_t baud_to_index(uint32_t baud) {
-    for(uint8_t i = 0; i < BAUD_OPTIONS_COUNT; i++) {
-        if(baud_options[i] == baud) return i;
-    }
-    return 4;
+    draw_footer(canvas, "OK: Pause", "Hold OK: Info");
 }
 
 static void render_settings(Canvas* canvas, ZeroMeshApp* app) {
     draw_header(canvas, app, "Settings");
-
     canvas_set_font(canvas, FontSecondary);
+    canvas_set_color(canvas, ColorBlack);
 
-    const int row_h = 10;
-    const int start_y = 26;
+    const int start_y = 24;
+    const int row_h = 12;
+    const int visible_items = 4;
     const int label_x = 4;
-    const int value_x = 68;
+    const int value_x = 92;
 
-    const uint8_t visible_items = 3;
     uint8_t start_idx = 0;
-
-    if (app->settings_cursor >= visible_items) {
+    if(app->settings_cursor >= visible_items) {
         start_idx = app->settings_cursor - visible_items + 1;
     }
 
     for(uint8_t i = start_idx; i < start_idx + visible_items && i < SETTING_COUNT; i++) {
-        int display_idx = i - start_idx; 
+        int display_idx = i - start_idx;
         int y = start_y + display_idx * row_h;
 
         if(i == app->settings_cursor) {
@@ -265,8 +301,11 @@ static void render_settings(Canvas* canvas, ZeroMeshApp* app) {
         switch(i) {
         case SettingUart:
             label = "UART Port";
-            snprintf(val_buf, sizeof(val_buf), "%s",
-                     (app->uart_id == FuriHalSerialIdUsart) ? "USART" : "LPUART");
+            snprintf(
+                val_buf,
+                sizeof(val_buf),
+                "%s",
+                (app->uart_id == FuriHalSerialIdUsart) ? "USART" : "LPUART");
             break;
         case SettingBaud:
             label = "Baud Rate";
@@ -285,15 +324,16 @@ static void render_settings(Canvas* canvas, ZeroMeshApp* app) {
             snprintf(val_buf, sizeof(val_buf), "%s", ringtone_names[app->notify_ringtone]);
             break;
         default:
+            val_buf[0] = '\0';
             break;
         }
 
         canvas_draw_str(canvas, label_x, y, label);
 
         if(i == app->settings_cursor && app->settings_editing) {
-            char arrow_buf[24];
+            char arrow_buf[28];
             snprintf(arrow_buf, sizeof(arrow_buf), "< %s >", val_buf);
-            canvas_draw_str(canvas, value_x - 8, y, arrow_buf);
+            canvas_draw_str(canvas, value_x - 10, y, arrow_buf);
         } else {
             canvas_draw_str(canvas, value_x, y, val_buf);
         }
@@ -302,9 +342,9 @@ static void render_settings(Canvas* canvas, ZeroMeshApp* app) {
     }
 
     if(app->settings_editing) {
-        draw_footer(canvas, "L/R:Value", "OK:Done");
+        draw_footer(canvas, "Left/Right: Value", "OK: Done");
     } else {
-        draw_footer(canvas, "U/D:Select", "OK:Edit");
+        draw_footer(canvas, "Up/Down: Select", "OK: Edit");
     }
 }
 
@@ -313,15 +353,28 @@ void render_cb(Canvas* canvas, void* ctx) {
     if(!app) return;
 
     canvas_clear(canvas);
+
     furi_mutex_acquire(app->lock, FuriWaitForever);
 
     switch(app->ui_mode) {
-    case PAGE_MESSAGES:  render_messages(canvas, app); break;
-    case PAGE_ROSTER:    render_roster(canvas, app);   break;
-    case PAGE_STATS:     render_stats(canvas, app);    break;
-    case PAGE_SIGNAL:    render_signal(canvas, app);   break;
-    case PAGE_LOGS:      render_logs(canvas, app);     break;
-    case PAGE_SETTINGS:  render_settings(canvas, app); break;
+    case PAGE_MESSAGES:
+        render_messages(canvas, app);
+        break;
+    case PAGE_ROSTER:
+        render_roster(canvas, app);
+        break;
+    case PAGE_STATS:
+        render_stats(canvas, app);
+        break;
+    case PAGE_SIGNAL:
+        render_signal(canvas, app);
+        break;
+    case PAGE_LOGS:
+        render_logs(canvas, app);
+        break;
+    case PAGE_SETTINGS:
+        render_settings(canvas, app);
+        break;
     default:
         app->ui_mode = PAGE_MESSAGES;
         render_messages(canvas, app);
@@ -341,8 +394,10 @@ static void setting_change(ZeroMeshApp* app, int direction) {
     }
     case SettingBaud: {
         uint8_t idx = baud_to_index(app->baud);
-        if(direction > 0 && idx < BAUD_OPTIONS_COUNT - 1) idx++;
-        else if(direction < 0 && idx > 0) idx--;
+        if(direction > 0 && idx < BAUD_OPTIONS_COUNT - 1)
+            idx++;
+        else if(direction < 0 && idx > 0)
+            idx--;
         uart_reopen(app, app->uart_id, baud_options[idx]);
         break;
     }
@@ -369,7 +424,6 @@ static void setting_change(ZeroMeshApp* app, int direction) {
 
 void text_input_callback(void* ctx) {
     ZeroMeshApp* app = ctx;
-    
     if(strlen(app->text_buffer) > 0) {
         if(app->ui_mode == PAGE_ROSTER && app->roster.state == RosterStateChat) {
             uint32_t to_node = app->roster.nodes[app->roster.selected_idx].node_id;
@@ -379,7 +433,6 @@ void text_input_callback(void* ctx) {
         }
         app->text_buffer[0] = '\0';
     }
-    
     view_dispatcher_stop(app->kb_dispatcher);
 }
 
@@ -391,13 +444,11 @@ void input_cb(InputEvent* e, void* ctx) {
     if(app->ui_mode == PAGE_ROSTER) {
         bool deep_in_roster = (app->roster.state != RosterStateList);
         input_roster(e, app);
-        
         if(deep_in_roster) return;
         if(e->key == InputKeyUp || e->key == InputKeyDown || e->key == InputKeyOk) return;
     }
 
     switch(e->key) {
-
     case InputKeyLeft:
         if(app->ui_mode == PAGE_SETTINGS && app->settings_editing) {
             if(e->type == InputTypeShort || e->type == InputTypeRepeat) {
@@ -429,20 +480,17 @@ void input_cb(InputEvent* e, void* ctx) {
 
     case InputKeyUp:
         if(e->type != InputTypeShort && e->type != InputTypeRepeat) break;
-
         if(app->ui_mode == PAGE_MESSAGES) {
             if(app->msg_scroll_offset < app->history.count) {
                 app->msg_scroll_offset++;
             }
             view_port_update(app->vp);
-        }
-        else if(app->ui_mode == PAGE_LOGS) {
+        } else if(app->ui_mode == PAGE_LOGS) {
             if(app->log_paused && app->log_scroll_offset < LOG_LINES - 5) {
                 app->log_scroll_offset++;
             }
             view_port_update(app->vp);
-        }
-        else if(app->ui_mode == PAGE_SETTINGS) {
+        } else if(app->ui_mode == PAGE_SETTINGS) {
             if(!app->settings_editing) {
                 if(app->settings_cursor > 0)
                     app->settings_cursor--;
@@ -455,20 +503,17 @@ void input_cb(InputEvent* e, void* ctx) {
 
     case InputKeyDown:
         if(e->type != InputTypeShort && e->type != InputTypeRepeat) break;
-
         if(app->ui_mode == PAGE_MESSAGES) {
             if(app->msg_scroll_offset > 0) {
                 app->msg_scroll_offset--;
             }
             view_port_update(app->vp);
-        }
-        else if(app->ui_mode == PAGE_LOGS) {
+        } else if(app->ui_mode == PAGE_LOGS) {
             if(app->log_paused && app->log_scroll_offset > 0) {
                 app->log_scroll_offset--;
             }
             view_port_update(app->vp);
-        }
-        else if(app->ui_mode == PAGE_SETTINGS) {
+        } else if(app->ui_mode == PAGE_SETTINGS) {
             if(!app->settings_editing) {
                 app->settings_cursor = (app->settings_cursor + 1) % SETTING_COUNT;
                 view_port_update(app->vp);
@@ -481,14 +526,12 @@ void input_cb(InputEvent* e, void* ctx) {
             if(app->ui_mode == PAGE_SETTINGS) {
                 app->settings_editing = !app->settings_editing;
                 view_port_update(app->vp);
-            }
-            else if(app->ui_mode == PAGE_LOGS) {
+            } else if(app->ui_mode == PAGE_LOGS) {
                 app->log_paused = !app->log_paused;
                 if(!app->log_paused) app->log_scroll_offset = 0;
                 view_port_update(app->vp);
-            }
-            else if(app->ui_mode == PAGE_MESSAGES) {
-                app->show_keyboard = true; 
+            } else if(app->ui_mode == PAGE_MESSAGES) {
+                app->show_keyboard = true;
             }
         } else if(e->type == InputTypeLong) {
             request_info(app);
@@ -513,5 +556,5 @@ void input_cb(InputEvent* e, void* ctx) {
 
 uint32_t kb_back_callback(void* ctx) {
     (void)ctx;
-    return VIEW_NONE; 
+    return VIEW_NONE;
 }
