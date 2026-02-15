@@ -117,7 +117,7 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
         uint8_t history_idx = broadcast_indices[start_offset + i];
         Message* msg = &app->history.msgs[history_idx];
         
-        draw_message_bubble(canvas, 2, y, 124, msg->text, msg->is_tx);
+        draw_message_bubble(canvas, 2, y, 124, msg->text, msg->is_tx, (uint32_t)history_idx * 977u);
         y += 14;
     }
 
