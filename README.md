@@ -82,8 +82,9 @@ Connect your Meshtastic node to the Flipper Zero GPIO pins:
 * **RX**: Connect to Flipper TX (Pin 13/14 depending on UART selection).
 * **GND**: Ensure a common ground between both devices.
 
+* **5V Optional**: Do not use the USB to power the meshtastic node if you chose to use 5V.
+
 ![GPIO Pinout](docs/images/pinout.png)
-*Flipper Zero GPIO connection diagram*
 
 ### Node Settings
 
