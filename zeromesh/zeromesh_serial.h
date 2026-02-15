@@ -53,6 +53,7 @@ typedef struct {
     uint8_t battery_level;
     float voltage;
     bool has_telemetry;
+	bool has_new_dm;
 } NodeEntry;
 
 typedef struct {
