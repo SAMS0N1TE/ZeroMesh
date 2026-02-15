@@ -33,6 +33,7 @@ void roster_add_node(ZeroMeshApp* app, uint32_t node_id, int8_t snr, int16_t rss
         }
         app->roster.nodes[target_idx].node_id = node_id;
         app->roster.nodes[target_idx].has_telemetry = false;
+        app->roster.nodes[target_idx].has_new_dm = false;
     }
     
     app->roster.nodes[target_idx].last_seen = furi_get_tick() / 1000;
@@ -113,7 +114,8 @@ void render_roster(Canvas* canvas, ZeroMeshApp* app) {
             char line_buf[64];
             uint32_t now = furi_get_tick() / 1000;
             uint32_t diff = now - app->roster.nodes[idx].last_seen;
-            snprintf(line_buf, sizeof(line_buf), "%08lX  %lus ago", (unsigned long)app->roster.nodes[idx].node_id, (unsigned long)diff);
+            const char* alert = app->roster.nodes[idx].has_new_dm ? "(!)" : "   ";
+            snprintf(line_buf, sizeof(line_buf), "%s %08lX  %lus ago", alert, (unsigned long)app->roster.nodes[idx].node_id, (unsigned long)diff);
             canvas_draw_str(canvas, 4, y, line_buf);
             y += 12;
         }
@@ -132,7 +134,11 @@ void render_roster(Canvas* canvas, ZeroMeshApp* app) {
         for(uint8_t i = 0; i < app->history.count; i++) {
             uint8_t idx = (app->history.head + MSG_HISTORY - app->history.count + i) % MSG_HISTORY;
             Message* m = &app->history.msgs[idx];
-            if(m->from == selected->node_id || m->to == selected->node_id) {
+            
+            bool is_dm_from_them = (m->from == selected->node_id && m->to == app->my_node_num);
+            bool is_dm_from_us = (m->from == app->my_node_num && m->to == selected->node_id);
+
+            if(is_dm_from_them || is_dm_from_us) {
                 chat_msgs[chat_count++] = idx;
             }
         }
@@ -211,6 +217,7 @@ void input_roster(InputEvent* e, ZeroMeshApp* app) {
         }
         else if(e->key == InputKeyOk) {
             if(e->type == InputTypeShort) {
+                app->roster.nodes[app->roster.selected_idx].has_new_dm = false;
                 app->roster.state = RosterStateChat;
                 app->roster.chat_scroll = 0;
                 view_port_update(app->vp);
