@@ -2,6 +2,15 @@
 
 ZeroMesh is a serial interface for the Flipper Zero designed to communicate with Meshtastic nodes. It provides a direct link to a node via UART to monitor network status, manage a node roster, and send or receive messages.
 
+Power Warning
+
+Do not power a node from USB, battery, or any external supply while it is connected to the Flipper Zero 5V pin.
+
+The 5V pin is an output. Multiple power sources on the same rail will back-feed and can damage the Flipper, the node’s regulator, or the USB port.
+
+Use only one power source at a time. Disconnect the Flipper 5V before connecting USB or any other supply.
+
+
 ## Features
 
 * **Roster Management**: Tracks discovered nodes, including Signal-to-Noise Ratio (SNR), Received Signal Strength Indicator (RSSI), and telemetry data like battery percentage and voltage.
