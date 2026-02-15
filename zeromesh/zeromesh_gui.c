@@ -74,41 +74,54 @@ static void render_messages(Canvas* canvas, ZeroMeshApp* app) {
     canvas_set_font(canvas, FontSecondary);
     canvas_set_color(canvas, ColorBlack);
 
-    if(app->history.count == 0) {
-        canvas_draw_str(canvas, 16, 34, "No messages yet");
-        canvas_draw_str(canvas, 10, 46, "Press OK to send test");
+    // 1. Create a temporary map of broadcast messages to maintain scroll logic
+    uint8_t broadcast_indices[MSG_HISTORY];
+    uint8_t broadcast_count = 0;
+
+    for(uint8_t i = 0; i < app->history.count; i++) {
+        uint8_t idx = (app->history.head + MSG_HISTORY - app->history.count + i) % MSG_HISTORY;
+        // Only include broadcast messages (to == 0xFFFFFFFF)
+        if(app->history.msgs[idx].to == 0xFFFFFFFF) {
+            broadcast_indices[broadcast_count++] = idx;
+        }
+    }
+
+    if(broadcast_count == 0) {
+        canvas_draw_str(canvas, 16, 34, "No mesh traffic yet");
+        canvas_draw_str(canvas, 10, 46, "Press OK to broadcast");
         draw_footer(canvas, "<Prev", "Next>");
         return;
     }
 
+    // 2. Adjust scroll logic based on the filtered count
     int max_visible = 3;
-    uint8_t total = app->history.count;
-
-    if(total <= (uint8_t)max_visible) {
+    if(broadcast_count <= (uint8_t)max_visible) {
         app->msg_scroll_offset = 0;
-    } else if(app->msg_scroll_offset > total - max_visible) {
-        app->msg_scroll_offset = total - max_visible;
+    } else if(app->msg_scroll_offset > broadcast_count - max_visible) {
+        app->msg_scroll_offset = broadcast_count - max_visible;
     }
-
-    uint8_t oldest = (app->history.head + MSG_HISTORY - total) % MSG_HISTORY;
 
     uint8_t start_offset = 0;
-    if(total > (uint8_t)max_visible) {
-        start_offset = total - max_visible - app->msg_scroll_offset;
+    if(broadcast_count > (uint8_t)max_visible) {
+        // We use the filtered count for the offset
+        start_offset = broadcast_count - max_visible - app->msg_scroll_offset;
     }
 
+    // 3. Render the filtered bubbles
     int y = 18;
-    for(int i = 0; i < max_visible && (start_offset + i) < total; i++) {
-        uint8_t idx = (oldest + start_offset + i) % MSG_HISTORY;
-        Message* msg = &app->history.msgs[idx];
+    for(int i = 0; i < max_visible && (start_offset + i) < broadcast_count; i++) {
+        uint8_t history_idx = broadcast_indices[start_offset + i];
+        Message* msg = &app->history.msgs[history_idx];
+        
         draw_message_bubble(canvas, 2, y, 124, msg->text, msg->is_tx);
         y += 14;
     }
 
+    // 4. Scroll Indicators
     if(app->msg_scroll_offset > 0) {
         canvas_draw_str(canvas, 60, 62, "v");
     }
-    if(total > (uint8_t)max_visible && app->msg_scroll_offset < total - max_visible) {
+    if(broadcast_count > (uint8_t)max_visible && app->msg_scroll_offset < broadcast_count - max_visible) {
         canvas_draw_str(canvas, 60, 17, "^");
     }
 
