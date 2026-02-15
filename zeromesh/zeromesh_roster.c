@@ -6,14 +6,33 @@
 #include <stdio.h>
 #include <string.h>
 
-static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const char* text, uint32_t phase_seed) {
-    if(!text || !text[0]) return;
+static void draw_marquee_text_masked(
+    Canvas* canvas,
+    int bx,
+    int by,
+    int bubble_w,
+    int bubble_h,
+    int pad,
+    const char* text,
+    uint32_t phase_seed,
+    bool is_tx) {
+    if(!text) text = "";
+
+    Color bubble_bg = is_tx ? ColorBlack : ColorWhite;
+    Color text_col = is_tx ? ColorWhite : ColorBlack;
+
+    int inner_x = bx + pad;
+    int inner_y = by + 1;
+    int inner_w = bubble_w - (pad * 2);
+    int baseline = inner_y + 9;
+
+    if(inner_w <= 0) return;
 
     uint16_t text_w = canvas_string_width(canvas, text);
-    if(text_w <= (uint16_t)w) {
-        canvas_frame_set(canvas, x, y, w, h);
-        canvas_draw_str(canvas, 0, 9, text);
-        canvas_frame_set(canvas, 0, 0, 128, 64);
+    if(text_w <= (uint16_t)inner_w) {
+        canvas_set_color(canvas, text_col);
+        canvas_draw_str(canvas, inner_x, baseline, text);
+        canvas_set_color(canvas, ColorBlack);
         return;
     }
 
@@ -23,15 +42,29 @@ static void draw_marquee_text(Canvas* canvas, int x, int y, int w, int h, const 
     uint16_t cycle = text_w + gap;
     uint16_t off = (uint16_t)(step % cycle);
 
-    canvas_frame_set(canvas, x, y, w, h);
-
-    int32_t x1 = -(int32_t)off;
+    int32_t x1 = (int32_t)inner_x - (int32_t)off;
     int32_t x2 = x1 + (int32_t)cycle;
 
-    canvas_draw_str(canvas, x1, 9, text);
-    canvas_draw_str(canvas, x2, 9, text);
+    canvas_set_color(canvas, text_col);
+    canvas_draw_str(canvas, (int)x1, baseline, text);
+    canvas_draw_str(canvas, (int)x2, baseline, text);
 
-    canvas_frame_set(canvas, 0, 0, 128, 64);
+    canvas_set_color(canvas, bubble_bg);
+    if(pad > 0) {
+        canvas_draw_box(canvas, bx, by, pad, bubble_h);
+        canvas_draw_box(canvas, bx + bubble_w - pad, by, pad, bubble_h);
+    }
+
+    canvas_set_color(canvas, ColorWhite);
+    if(bx > 0) {
+        canvas_draw_box(canvas, 0, by, bx, bubble_h);
+    }
+    int rx = bx + bubble_w;
+    if(rx < 128) {
+        canvas_draw_box(canvas, rx, by, 128 - rx, bubble_h);
+    }
+
+    canvas_set_color(canvas, ColorBlack);
 }
 
 void roster_add_node(ZeroMeshApp* app, uint32_t node_id, int8_t snr, int16_t rssi) {
@@ -107,15 +140,14 @@ static void draw_roster_bubble(Canvas* canvas, int x, int y, int max_w, const ch
     if(is_tx) {
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
-        canvas_set_color(canvas, ColorWhite);
-        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, s, phase_seed);
+        draw_marquee_text_masked(canvas, bx, y, bubble_w, bubble_h, pad, s, phase_seed, true);
         canvas_set_color(canvas, ColorBlack);
     } else {
         canvas_set_color(canvas, ColorWhite);
         canvas_draw_rbox(canvas, bx, y, bubble_w, bubble_h, 3);
         canvas_set_color(canvas, ColorBlack);
         canvas_draw_rframe(canvas, bx, y, bubble_w, bubble_h, 3);
-        draw_marquee_text(canvas, bx + pad, y + 1, bubble_w - (pad * 2), bubble_h - 2, s, phase_seed);
+        draw_marquee_text_masked(canvas, bx, y, bubble_w, bubble_h, pad, s, phase_seed, false);
     }
 }
 
