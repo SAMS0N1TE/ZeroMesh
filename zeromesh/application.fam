@@ -1,16 +1,16 @@
 App(
-    appid="zeromesh_serial",
-    name="ZeroMesh Serial",
+    appid="zeromesh",
+    name="ZeroMesh",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="zeromesh_serial_app",
     requires=["gui"],
     stack_size=8 * 1024,
-    fap_category="Tools",
-    fap_version="1.0",
-	fap_icon="icon.png",
+    fap_version=(1, 0),
+    fap_category="GPIO",
+    fap_icon="icon.png",
     fap_author="SAMS0N1TE",
-    fap_weburl="https://github.com/SAMS0N1TE/ZeroMesh/tree/main",
-    fap_description="Simple Meshtastic serial interface",
+    fap_weburl="https://github.com/SAMS0N1TE/ZeroMesh",
+    fap_description="Meshtastic serial interface for Flipper Zero",
     fap_libs=["nanopb"],
     fap_private_libs=[
         Lib(
