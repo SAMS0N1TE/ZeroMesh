@@ -2,8 +2,6 @@
 
 ZeroMesh is a Meshtastic serial interface for the Flipper Zero. It connects to a node over UART and gives you a live view of the mesh: incoming messages, node roster, signal stats, and device telemetry, all from the Flipper's screen.
 
-![Main Messages View](docs/images/messages.png)
-
 ## Power Warning
 
 Do not power a node from USB, battery, or any external supply while it is connected to the Flipper Zero 5V pin.
@@ -16,24 +14,13 @@ Use only one power source at a time. Disconnect the Flipper 5V before connecting
 
 The app is built around a multi-page UI (Messages, Roster, Stats, Signal, Logs, and Settings) navigated with left and right. The roster tracks every node that's announced itself on the network, showing SNR, RSSI, battery percentage, and voltage. From there you can either broadcast to the primary channel or open a direct private chat with any individual node.
 
-![Node Roster](docs/images/roster.png)
-
 Multi-channel is supported. Long-pressing OK on the Messages page cycles through up to 8 configured channels, with the current channel shown in the header.
 
 Notifications are fully configurable. Vibration, LED flash, and audio are all independent toggles, with 19 built-in ringtones ranging from a short beep to Nokia, Mario, and SOS.
 
 Messages show the sender's node ID in !a1b2 format above each bubble. Long messages can either scroll across the screen or wrap to multiple lines depending on your preference, and the display compacts short messages so more fit on screen at once. New messages auto-scroll into view, but you can scroll back manually at any time.
 
-![Private Chat](docs/images/chat.png)
-<p align="center">
-  <img src="docs/images/scroll.gif" alt="Private Chat Scroller" width="700">
-</p>
-
-*Scroller enabled*
-
 All settings persist to `/ext/zeromesh/settings.cfg` on the SD card automatically, nothing needs saving manually. UART port and baud rate are configurable, with support for both USART and LPUART.
-
-![Settings Page](docs/images/settings.png)
 
 ## Installation
 
@@ -54,9 +41,6 @@ Connect your Meshtastic node to the Flipper Zero GPIO pins:
 * **RX**: Connect to Flipper TX (Pin 13/14 depending on UART selection).
 * **GND**: Ensure a common ground between both devices.
 * **5V Optional**: Do not use the USB to power the meshtastic node if you chose to use 5V.
-
-![GPIO Pinout](docs/images/pinout.png)
-*Source: Flipper Zero Documentation*
 
 ## Node Settings
 
