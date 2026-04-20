@@ -20,16 +20,16 @@ Notifications are fully configurable. Vibration, LED flash, and audio are all in
 
 Messages show the sender's node ID in !a1b2 format above each bubble. Long messages can either scroll across the screen or wrap to multiple lines depending on your preference, and the display compacts short messages so more fit on screen at once. New messages auto-scroll into view, but you can scroll back manually at any time.
 
-All settings persist to `/ext/zeromesh/settings.cfg` on the SD card automatically, nothing needs saving manually. UART port and baud rate are configurable, with support for both USART and LPUART.
+All settings persist to /ext/zeromesh/settings.cfg on the SD card automatically, nothing needs saving manually. UART port and baud rate are configurable, with support for both USART and LPUART.
 
 ## Installation
 
-1. Copy the `zeromesh` folder into the `applications_user` directory of your Flipper Zero firmware source.
-2. Ensure the `lib/meshtastic_api` and `lib/nanopb` dependencies are present.
+1. Copy the zeromesh folder into the applications_user directory of your Flipper Zero firmware source.
+2. Ensure the lib/meshtastic_api and lib/nanopb dependencies are present.
 3. Open a terminal in the project root and run:
-   ```powershell
+   powershell
    ufbt launch
-   ```
+   
 
 ## Hardware Configuration
 
@@ -47,7 +47,7 @@ Connect your Meshtastic node to the Flipper Zero GPIO pins:
 The Meshtastic node must be configured via the CLI or Mobile App:
 
 * **Serial Module**: Enabled.
-* **Serial Mode**: `PROTO`.
+* **Serial Mode**: PROTO.
 * **Baud Rate**: 115200.
 
 ## Usage
@@ -102,7 +102,7 @@ Settings automatically save when changed.
 
 ## No Data Received
 1. Check serial connections (TX/RX not swapped).
-2. Verify node serial mode is set to `PROTO`.
+2. Verify node serial mode is set to PROTO.
 3. Confirm baud rate matches on both devices (115200 default).
 
 ## Messages Not Displaying
@@ -112,8 +112,8 @@ Settings automatically save when changed.
 
 ## Settings Not Saving
 1. Ensure SD card is inserted and mounted.
-2. Check `/ext` folder exists on SD card.
-3. Try deleting `/ext/zeromesh/settings.cfg` and restart.
+2. Check /ext folder exists on SD card.
+3. Try deleting /ext/zeromesh/settings.cfg and restart.
 
 ## License
 
