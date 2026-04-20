@@ -1,6 +1,6 @@
-# ZeroMesh Serial
+# ZeroMesh
 
-ZeroMesh is a serial interface for the Flipper Zero designed to communicate with Meshtastic nodes. It provides a direct link to a node via UART to monitor network status, manage a node roster, and send or receive messages.
+ZeroMesh is a Meshtastic serial interface for the Flipper Zero. It connects to a node over UART and gives you a live view of the mesh: incoming messages, node roster, signal stats, and device telemetry, all from the Flipper's screen.
 
 ![Main Messages View](docs/images/messages.png)
 
@@ -14,24 +14,15 @@ Use only one power source at a time. Disconnect the Flipper 5V before connecting
 
 ## Features
 
-### Core Functionality
-* **Roster Management**: Tracks discovered nodes, including Signal-to-Noise Ratio (SNR), Received Signal Strength Indicator (RSSI), and telemetry data like battery percentage and voltage.
-* **Messaging**: Supports both broadcast and direct private messaging to specific nodes within the roster.
-* **Multi-Channel Support**: Switch between up to 8 Meshtastic channels with long-press OK on messages page.
-* **UI System**: A multi-page interface featuring message history, node lists, device statistics, signal information, and debug logs.
+The app is built around a multi-page UI (Messages, Roster, Stats, Signal, Logs, and Settings) navigated with left and right. The roster tracks every node that's announced itself on the network, showing SNR, RSSI, battery percentage, and voltage. From there you can either broadcast to the primary channel or open a direct private chat with any individual node.
 
 ![Node Roster](docs/images/roster.png)
 
-### Notifications
-* **Configurable Alerts**: 19 built-in ringtones including Nokia, SOS, Mario, and more.
-* **Hardware Integration**: Vibration motor, LED flash, and speaker notifications.
-* **Per-Event Control**: Separate settings for vibration, LED, and audio.
+Multi-channel is supported. Long-pressing OK on the Messages page cycles through up to 8 configured channels, with the current channel shown in the header.
 
-### Display Features
-* **Sender Identification**: Messages show sender IDs in !a1b2 format.
-* **Smart Text Handling**: Toggle between scrolling and wrapping for long messages.
-* **Compact Spacing**: Multiple short messages fit on screen simultaneously.
-* **Auto-scroll**: Automatically shows newest messages with manual scroll support.
+Notifications are fully configurable. Vibration, LED flash, and audio are all independent toggles, with 19 built-in ringtones ranging from a short beep to Nokia, Mario, and SOS.
+
+Messages show the sender's node ID in !a1b2 format above each bubble. Long messages can either scroll across the screen or wrap to multiple lines depending on your preference, and the display compacts short messages so more fit on screen at once. New messages auto-scroll into view, but you can scroll back manually at any time.
 
 ![Private Chat](docs/images/chat.png)
 <p align="center">
@@ -40,10 +31,7 @@ Use only one power source at a time. Disconnect the Flipper 5V before connecting
 
 *Scroller enabled*
 
-### Settings & Customization
-* **Persistent Settings**: All preferences automatically save to SD card.
-* **Scroll Controls**: Adjustable speed (1-10) and framerate (1-10) for performance tuning.
-* **UART Configuration**: Support for both USART and LPUART with configurable baud rates.
+All settings persist to `/ext/zeromesh/settings.cfg` on the SD card automatically, nothing needs saving manually. UART port and baud rate are configurable, with support for both USART and LPUART.
 
 ![Settings Page](docs/images/settings.png)
 
@@ -65,7 +53,6 @@ Connect your Meshtastic node to the Flipper Zero GPIO pins:
 * **TX**: Connect to Flipper RX (Pin 13/14 depending on UART selection).
 * **RX**: Connect to Flipper TX (Pin 13/14 depending on UART selection).
 * **GND**: Ensure a common ground between both devices.
-
 * **5V Optional**: Do not use the USB to power the meshtastic node if you chose to use 5V.
 
 ![GPIO Pinout](docs/images/pinout.png)
@@ -115,7 +102,7 @@ Settings automatically save when changed.
 
 ### Notification Settings
 * **Vibration**: ON/OFF
-* **LED Flash**: ON/OFF  
+* **LED Flash**: ON/OFF
 * **Ringtone**: 19 options (Off, Short, Double, Triple, Long, SOS, Chirp, Nokia, Descend, Bounce, Alert, Pulse, Siren, Beep3, Trill, Mario, LevelUp, Metric, Minimal)
 
 ### Display Settings
@@ -147,7 +134,8 @@ Settings automatically save when changed.
 ## License
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
-## Credits / Upstream
+
+## Credits
 
 This project interoperates with and/or uses components from:
 
@@ -165,4 +153,3 @@ This project interoperates with and/or uses components from:
   - Upstream: https://github.com/nanopb/nanopb
   - License: zlib
   - Used for: protobuf encoding/decoding
-
