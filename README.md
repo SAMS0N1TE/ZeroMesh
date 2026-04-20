@@ -46,7 +46,7 @@ All settings persist to `/ext/zeromesh/settings.cfg` on the SD card automaticall
 
 ## Hardware Configuration
 
-### Connection
+## Connection
 
 Connect your Meshtastic node to the Flipper Zero GPIO pins:
 
@@ -58,7 +58,7 @@ Connect your Meshtastic node to the Flipper Zero GPIO pins:
 ![GPIO Pinout](docs/images/pinout.png)
 *Source: Flipper Zero Documentation*
 
-### Node Settings
+## Node Settings
 
 The Meshtastic node must be configured via the CLI or Mobile App:
 
@@ -68,30 +68,30 @@ The Meshtastic node must be configured via the CLI or Mobile App:
 
 ## Usage
 
-### Navigation
+## Navigation
 * **Left/Right**: Switch between pages (Messages, Roster, Stats, Signal, Logs, Settings).
 * **Up/Down**: Scroll through messages or navigate menus.
 
-### Messages Page
+## Messages Page
 * **OK (short)**: Open text input for broadcasting.
 * **OK (long)**: Cycle through channels (if multi-channel configured).
 * **Up/Down**: Scroll through message history.
 
-### Roster Page
+## Roster Page
 * **OK (short)**: Start private chat with selected node.
 * **OK (long)**: View detailed node information (SNR, RSSI, battery, voltage).
 * **Up/Down**: Navigate node list.
 
-### Private Chat
+## Private Chat
 * **OK**: Send direct message to selected node.
 * **Up/Down**: Scroll through conversation history.
 * **Back**: Return to roster.
 
-### Logs Page
+## Logs Page
 * **OK**: Pause/unpause log stream.
 * **Up/Down**: Scroll when paused.
 
-### Settings Page
+## Settings Page
 * **OK**: Enter edit mode for selected setting.
 * **Left/Right**: Adjust value while editing.
 * **OK/Back**: Exit edit mode.
@@ -100,33 +100,33 @@ Settings automatically save when changed.
 
 ## Configuration Options
 
-### Notification Settings
+## Notification Settings
 * **Vibration**: ON/OFF
 * **LED Flash**: ON/OFF
 * **Ringtone**: 19 options (Off, Short, Double, Triple, Long, SOS, Chirp, Nokia, Descend, Bounce, Alert, Pulse, Siren, Beep3, Trill, Mario, LevelUp, Metric, Minimal)
 
-### Display Settings
+## Display Settings
 * **Scroll Speed**: 1-10 (controls animation speed)
 * **Scroll FPS**: 1-10 (controls refresh rate, lower = better battery)
 * **Long Message Handling**: Scroll or Wrap
 
-### UART Settings
+## UART Settings
 * **Port**: USART or LPUART
 * **Baud Rate**: 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600
 
 ## Troubleshooting
 
-### No Data Received
+## No Data Received
 1. Check serial connections (TX/RX not swapped).
 2. Verify node serial mode is set to `PROTO`.
 3. Confirm baud rate matches on both devices (115200 default).
 
-### Messages Not Displaying
+## Messages Not Displaying
 1. Check UART settings in Settings page.
 2. View Logs page to confirm data reception.
 3. Verify Meshtastic node is properly configured.
 
-### Settings Not Saving
+## Settings Not Saving
 1. Ensure SD card is inserted and mounted.
 2. Check `/ext` folder exists on SD card.
 3. Try deleting `/ext/zeromesh/settings.cfg` and restart.
