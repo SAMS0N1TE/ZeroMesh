@@ -38,7 +38,6 @@ Use only one power source at a time. Disconnect the Flipper 5V before connecting
   <img src="docs/images/scroll.gif" alt="Private Chat Scroller" width="700">
 </p>
 
-
 *Scroller enabled*
 
 ### Settings & Customization
@@ -47,18 +46,6 @@ Use only one power source at a time. Disconnect the Flipper 5V before connecting
 * **UART Configuration**: Support for both USART and LPUART with configurable baud rates.
 
 ![Settings Page](docs/images/settings.png)
-
-## File Structure
-
-* `zeromesh_serial_app.c`: Application entry point and main loop.
-* `zeromesh_gui.c/h`: UI rendering, pagination, and input handling.
-* `zeromesh_protocol.c/h`: Framing and Protobuf decoding for the Meshtastic serial protocol.
-* `zeromesh_roster.c/h`: Node discovery and direct message routing.
-* `zeromesh_uart.c/h`: Hardware serial configuration and stream buffering.
-* `zeromesh_history.c/h`: Message storage and system logging.
-* `zeromesh_notify.c/h`: Hardware notification triggers and ringtone playback.
-* `zeromesh_settings.c/h`: Settings persistence to SD card.
-* `zeromesh_channel.c/h`: Multi-channel management.
 
 ## Installation
 
